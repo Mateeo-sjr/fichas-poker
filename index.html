@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0d3b26">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fichas">
+<title>Fichas de póker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root {
+  --felt: #0d3b26;
+  --felt-2: #12482f;
+  --card: #174f35;
+  --card-hi: #1f6a47;
+  --line: rgba(255,255,255,.12);
+  --text: #f3f1e8;
+  --muted: rgba(243,241,232,.62);
+  --gold: #f0c35a;
+  --red: #e0564f;
+  --blue: #4f9be0;
+  --ok: #49c27f;
+  --radius: 14px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: radial-gradient(ellipse at 50% 0%, var(--felt-2), var(--felt) 70%) fixed;
+  background-color: var(--felt);
+  color: var(--text);
+  font: 16px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-user-select: none; user-select: none;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+input { font: inherit; }
+.app { max-width: 560px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; }
+.screen { padding: 16px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+h1 { font-size: 26px; margin: 8px 0 0; letter-spacing: -.01em; }
+h2 { font-size: 15px; margin: 6px 0 0; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.sub { color: var(--muted); margin: 0; }
+
+/* Formularios */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; color: var(--muted); }
+.input {
+  background: rgba(0,0,0,.25); border: 1px solid var(--line); border-radius: 10px;
+  color: var(--text); padding: 12px; width: 100%; -webkit-user-select: text; user-select: text;
+}
+.input:focus { outline: 2px solid var(--gold); outline-offset: -1px; }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; min-width: 0; }
+.player-row { display: flex; gap: 8px; align-items: center; }
+.player-row .input { flex: 1; }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 10px; background: rgba(0,0,0,.25);
+  border: 1px solid var(--line); display: grid; place-items: center; flex: none; font-size: 20px;
+}
+.btn {
+  padding: 14px 16px; border-radius: 12px; background: var(--card-hi); font-weight: 650;
+  border: 1px solid var(--line); min-height: 52px;
+}
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.primary { background: var(--gold); color: #1d1606; border-color: transparent; }
+.btn.ghost { background: transparent; }
+.btn.danger { background: var(--red); border-color: transparent; }
+.btn.block { width: 100%; }
+.err { color: #ffb4ae; font-size: 14px; margin: 0; min-height: 1em; }
+
+/* Barra superior */
+.top {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; background: rgba(9,40,26,.92); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.top .info { flex: 1; min-width: 0; }
+.top .street { font-weight: 700; }
+.top .blinds { color: var(--muted); font-size: 13px; }
+.top .icon-btn { width: 40px; height: 40px; font-size: 18px; }
+
+.pot {
+  text-align: center; padding: 14px; border-radius: var(--radius);
+  background: rgba(0,0,0,.22); border: 1px solid var(--line);
+}
+.pot .lbl { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.pot .amt { font-size: 38px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+.pot .hint { color: var(--muted); font-size: 14px; margin-top: 2px; }
+.banner {
+  background: var(--gold); color: #1d1606; border-radius: 10px; padding: 10px 12px;
+  font-weight: 650; text-align: center;
+}
+
+/* Jugadores */
+.players { display: flex; flex-direction: column; gap: 8px; }
+.p {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px;
+  padding: 10px 12px; border-radius: var(--radius); background: var(--card);
+  border: 1px solid var(--line); transition: background .15s;
+}
+.p.turn { background: var(--card-hi); border: 2px solid var(--gold); padding: 9px 11px; }
+.p.folded { opacity: .42; }
+.p.out { opacity: .3; }
+.p .name { font-weight: 650; display: flex; gap: 6px; align-items: center; min-width: 0; }
+.p .name span.n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p .stack { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.p .meta { color: var(--muted); font-size: 13px; }
+.p .bet { font-size: 13px; text-align: right; color: var(--gold); font-variant-numeric: tabular-nums; }
+.tag {
+  font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 999px; flex: none;
+  background: rgba(255,255,255,.14);
+}
+.tag.d { background: #fff; color: #111; }
+.tag.sb { background: var(--blue); color: #fff; }
+.tag.bb { background: var(--red); color: #fff; }
+.tag.ai { background: var(--gold); color: #1d1606; }
+
+/* Acciones */
+.actions {
+  position: sticky; bottom: 0; z-index: 5; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(9,40,26,.95); backdrop-filter: blur(8px); border-top: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.who { text-align: center; font-size: 15px; color: var(--muted); }
+.who b { color: var(--text); font-size: 18px; }
+.act3 { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 8px; }
+.act3 .btn { padding: 12px 6px; font-size: 15px; }
+.raise { display: flex; flex-direction: column; gap: 10px; }
+.raise .amount { text-align: center; font-size: 30px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+.raise input[type=range] { width: 100%; accent-color: var(--gold); height: 32px; }
+.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.quick .btn { min-height: 40px; padding: 8px 4px; font-size: 14px; }
+.step { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.step .btn { min-height: 40px; padding: 8px; }
+
+/* Showdown */
+.potbox { padding: 12px; border-radius: var(--radius); background: rgba(0,0,0,.22); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.potbox .head { display: flex; justify-content: space-between; font-weight: 700; }
+.potbox .head .a { color: var(--gold); font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 12px 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line);
+  font-weight: 650; min-height: 46px;
+}
+.chip.on { background: var(--gold); color: #1d1606; border-color: transparent; }
+.result { padding: 12px; border-radius: var(--radius); background: var(--card); display: flex; justify-content: space-between; }
+.result .plus { color: var(--ok); font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* Hoja de ajustes */
+.sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  width: 100%; max-width: 560px; max-height: 92vh; overflow: auto; background: var(--felt-2);
+  border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line);
+}
+.sheet .player-row .input.num { flex: 0 0 110px; text-align: right; }
+.small { font-size: 13px; color: var(--muted); }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+'use strict';
+const STORAGE = 'fichas-poker-v1';
+const STREETS = ['Preflop', 'Flop', 'Turn', 'River'];
+const DEAL_HINT = ['', 'Sacad el flop (3 cartas)', 'Sacad el turn (1 carta)', 'Sacad el river (1 carta)'];
+
+let S = null;        // estado de la partida
+let H = [];          // historial para deshacer
+let ui = { raiseOpen: false, raiseTo: 0, sheet: false, setupErr: '' };
+
+// ---------- Persistencia ----------
+function save() {
+  try { localStorage.setItem(STORAGE, JSON.stringify({ S, H: H.slice(-60) })); } catch (e) {}
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE);
+    if (raw) { const d = JSON.parse(raw); S = d.S; H = d.H || []; }
+  } catch (e) { S = null; H = []; }
+}
+function snapshot() { H.push(JSON.stringify(S)); if (H.length > 60) H.shift(); }
+function undo() {
+  if (!H.length) return;
+  S = JSON.parse(H.pop());
+  ui.raiseOpen = false;
+  save(); render();
+}
+
+// ---------- Utilidades de mesa ----------
+const fmt = n => n.toLocaleString('es-ES');
+const inHand = p => !p.out && !p.folded;
+const canAct = p => !p.out && !p.folded && !p.allIn;
+function nextIdx(from, pred) {
+  const n = S.players.length;
+  for (let k = 1; k <= n; k++) {
+    const i = (from + k) % n;
+    if (pred(S.players[i])) return i;
+  }
+  return -1;
+}
+const potTotal = () => S.players.reduce((a, p) => a + p.total, 0);
+
+function put(p, amt) {
+  amt = Math.min(amt, p.stack);
+  p.stack -= amt; p.bet += amt; p.total += amt;
+  if (p.stack === 0) p.allIn = true;
+}
+
+// ---------- Partida ----------
+function newGame(names, stack, sb, bb) {
+  S = {
+    players: names.map((name, i) => ({ id: i, name, stack, bet: 0, total: 0, folded: false, allIn: false, out: false, acted: false })),
+    sb, bb, initStack: stack, dealer: -1, hand: 0,
+    phase: 'betting', street: 0, currentBet: 0, minRaise: bb, turn: -1, sbIdx: -1, bbIdx: -1,
+    pots: [], picks: [], results: [], runout: false,
+  };
+  H = [];
+  startHand();
+}
+
+function startHand() {
+  S.players.forEach(p => {
+    p.out = p.stack <= 0; p.bet = 0; p.total = 0; p.folded = false; p.allIn = false; p.acted = false;
+  });
+  const alive = S.players.filter(p => !p.out);
+  if (alive.length < 2) { S.phase = 'over'; return; }
+  S.hand++;
+  S.dealer = nextIdx(S.dealer, p => !p.out);
+  if (alive.length === 2) {           // mano a mano: el dealer es la ciega pequeña
+    S.sbIdx = S.dealer;
+    S.bbIdx = nextIdx(S.dealer, p => !p.out);
+  } else {
+    S.sbIdx = nextIdx(S.dealer, p => !p.out);
+    S.bbIdx = nextIdx(S.sbIdx, p => !p.out);
+  }
+  put(S.players[S.sbIdx], S.sb);
+  put(S.players[S.bbIdx], S.bb);
+  S.street = 0; S.currentBet = S.bb; S.minRaise = S.bb;
+  S.phase = 'betting'; S.pots = []; S.picks = []; S.results = []; S.runout = false;
+  S.turn = S.bbIdx;
+  advanceTurn();
+}
+
+// Tras cada acción: ¿se acaba la mano, la ronda, o le toca al siguiente?
+function afterAction() {
+  const live = S.players.filter(inHand);
+  if (live.length === 1) { awardUncontested(live[0]); return; }
+  advanceTurn();
+}
+
+function roundComplete() {
+  const actors = S.players.filter(canAct);
+  if (actors.length === 0) return true;
+  if (actors.length === 1 && actors[0].bet >= S.currentBet) return true;
+  return actors.every(p => p.acted && p.bet === S.currentBet);
+}
+
+function advanceTurn() {
+  if (!roundComplete()) {
+    S.turn = nextIdx(S.turn, p => canAct(p) && (!p.acted || p.bet < S.currentBet));
+    return;
+  }
+  // Ronda cerrada
+  const actors = S.players.filter(canAct);
+  if (S.street === 3 || actors.length < 2) {
+    S.runout = S.street < 3;
+    goShowdown();
+    return;
+  }
+  S.street++;
+  S.players.forEach(p => { p.bet = 0; p.acted = false; });
+  S.currentBet = 0; S.minRaise = S.bb;
+  S.turn = S.dealer;
+  S.turn = nextIdx(S.dealer, canAct);
+}
+
+function act(kind, raiseTo) {
+  snapshot();
+  const p = S.players[S.turn];
+  if (kind === 'fold') {
+    p.folded = true;
+  } else if (kind === 'call') {
+    put(p, S.currentBet - p.bet);
+  } else if (kind === 'raise') {
+    raiseTo = Math.min(raiseTo, p.bet + p.stack);
+    put(p, raiseTo - p.bet);
+    if (p.bet > S.currentBet) {
+      const size = p.bet - S.currentBet;
+      if (size >= S.minRaise) S.minRaise = size;
+      S.currentBet = p.bet;
+      S.players.forEach(o => { if (o !== p && canAct(o)) o.acted = false; });
+    }
+  }
+  p.acted = true;
+  ui.raiseOpen = false;
+  afterAction();
+  save(); render();
+}
+
+// ---------- Botes y reparto ----------
+function buildPots() {
+  const contenders = S.players.filter(inHand);
+  const levels = [...new Set(contenders.map(p => p.total))].sort((a, b) => a - b);
+  const pots = []; let prev = 0;
+  levels.forEach(level => {
+    const amount = S.players.reduce((a, p) => a + Math.max(0, Math.min(p.total, level) - prev), 0);
+    const eligible = contenders.filter(p => p.total >= level).map(p => p.id);
+    if (amount > 0) pots.push({ amount, eligible });
+    prev = level;
+  });
+  const leftover = S.players.reduce((a, p) => a + Math.max(0, p.total - prev), 0);
+  if (leftover && pots.length) pots[pots.length - 1].amount += leftover;
+  // Un bote con un solo candidato es apuesta no igualada: se devuelve sin preguntar.
+  return pots;
+}
+
+function goShowdown() {
+  S.pots = buildPots();
+  S.picks = S.pots.map(pot => pot.eligible.length === 1 ? [pot.eligible[0]] : []);
+  S.phase = 'showdown';
+  S.turn = -1;
+  if (S.pots.every(pot => pot.eligible.length === 1)) distribute();
+}
+
+function awardUncontested(winner) {
+  S.pots = [{ amount: potTotal(), eligible: [winner.id] }];
+  S.picks = [[winner.id]];
+  distribute();
+}
+
+function distribute() {
+  const won = {};
+  S.pots.forEach((pot, i) => {
+    // Orden de reparto de los restos: desde la izquierda del dealer
+    const winners = S.picks[i].slice().sort((a, b) => seatFromDealer(a) - seatFromDealer(b));
+    const share = Math.floor(pot.amount / winners.length);
+    let rest = pot.amount - share * winners.length;
+    winners.forEach(id => {
+      const amt = share + (rest > 0 ? 1 : 0); if (rest > 0) rest--;
+      S.players[id].stack += amt;
+      won[id] = (won[id] || 0) + amt;
+    });
+  });
+  S.results = Object.entries(won).map(([id, amt]) => {
+    const p = S.players[id];
+    return { name: p.name, amt, net: amt - p.total };
+  }).sort((a, b) => b.amt - a.amt);
+  S.players.forEach(p => { p.bet = 0; });
+  S.phase = 'done';
+}
+function seatFromDealer(id) {
+  const n = S.players.length;
+  return (id - S.dealer - 1 + n) % n;
+}
+
+function togglePick(potIdx, id) {
+  const cur = S.picks[potIdx];
+  const had = cur.includes(id);
+  S.picks[potIdx] = had ? cur.filter(x => x !== id) : [...cur, id];
+  // Comodidad: lo que eliges en el bote principal se copia a los secundarios vacíos donde ese jugador puede ganar.
+  if (!had) {
+    for (let j = potIdx + 1; j < S.pots.length; j++) {
+      if (S.picks[j].length === 0 && S.pots[j].eligible.includes(id)) S.picks[j] = [id];
+    }
+  }
+  render();
+}
+function confirmShowdown() {
+  if (S.picks.some(p => p.length === 0)) return;
+  // Deshacer el reparto vuelve al showdown con la selección vacía
+  const before = JSON.parse(JSON.stringify(S));
+  before.picks = before.pots.map(pot => pot.eligible.length === 1 ? [pot.eligible[0]] : []);
+  H.push(JSON.stringify(before));
+  distribute();
+  save(); render();
+}
+function nextHand() {
+  snapshot();
+  startHand();
+  save(); render();
+}
+
+// ---------- Render ----------
+const $app = document.getElementById('app');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function render() {
+  if (!S) return renderSetup();
+  if (S.phase === 'over') return renderOver();
+  let html = topBar();
+  html += '<div class="screen">';
+  if (S.phase === 'betting') html += bettingBody();
+  if (S.phase === 'showdown') html += showdownBody();
+  if (S.phase === 'done') html += doneBody();
+  html += '</div>';
+  if (S.phase === 'betting') html += actionBar();
+  if (ui.sheet) html += sheet();
+  $app.innerHTML = html;
+  bind();
+}
+
+function topBar() {
+  const street = S.phase === 'betting' ? STREETS[S.street] : S.phase === 'showdown' ? 'Showdown' : 'Mano terminada';
+  return `<div class="top">
+    <div class="info"><div class="street">Mano ${S.hand} · ${street}</div>
+    <div class="blinds">Ciegas ${fmt(S.sb)} / ${fmt(S.bb)}</div></div>
+    <button class="icon-btn" data-a="undo" ${H.length ? '' : 'disabled style="opacity:.35"'} aria-label="Deshacer">↶</button>
+    <button class="icon-btn" data-a="menu" aria-label="Ajustes">⚙</button>
+  </div>`;
+}
+
+function playerList(showTurn) {
+  const live = S.phase === 'betting' || S.phase === 'showdown';
+  return '<div class="players">' + S.players.map((p, i) => {
+    const tags = [];
+    if (p.out) tags.push('<span class="tag">FUERA</span>');
+    else {
+      if (i === S.dealer) tags.push('<span class="tag d">D</span>');
+      if (i === S.sbIdx && S.phase === 'betting' && S.street === 0) tags.push('<span class="tag sb">CP</span>');
+      if (i === S.bbIdx && S.phase === 'betting' && S.street === 0) tags.push('<span class="tag bb">CG</span>');
+      if (live && p.allIn && !p.folded) tags.push('<span class="tag ai">ALL-IN</span>');
+    }
+    const cls = ['p', showTurn && i === S.turn ? 'turn' : '', live && p.folded ? 'folded' : '', p.out ? 'out' : ''].join(' ');
+    const meta = p.out || (!live && p.stack === 0) ? 'Sin fichas'
+      : !live ? '' : p.folded ? 'Retirado' : p.total ? `En el bote: ${fmt(p.total)}` : '';
+    return `<div class="${cls}">
+      <div class="name"><span class="n">${esc(p.name)}</span>${tags.join('')}</div>
+      <div class="stack">${fmt(p.stack)}</div>
+      <div class="meta">${meta}</div>
+      <div class="bet">${p.bet && S.phase === 'betting' ? 'Apuesta ' + fmt(p.bet) : ''}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function bettingBody() {
+  let h = `<div class="pot"><div class="lbl">Bote</div><div class="amt">${fmt(potTotal())}</div>
+    ${S.currentBet ? `<div class="hint">Apuesta a igualar: ${fmt(S.currentBet)}</div>` : ''}</div>`;
+  if (S.street > 0 && S.players.every(p => p.acted === false || !canAct(p)) && S.currentBet === 0) {
+    h += `<div class="banner">${DEAL_HINT[S.street]}</div>`;
+  }
+  return h + playerList(true);
+}
+
+function actionBar() {
+  const p = S.players[S.turn];
+  const toCall = S.currentBet - p.bet;
+  const callAmt = Math.min(toCall, p.stack);
+  const maxTo = p.bet + p.stack;
+  const minTo = Math.min(S.currentBet + S.minRaise, maxTo);
+  const canRaise = p.stack > toCall;
+  const callLbl = toCall <= 0 ? 'Pasar' : callAmt === p.stack ? `All-in ${fmt(callAmt)}` : `Igualar ${fmt(callAmt)}`;
+  const raiseLbl = S.currentBet === 0 ? 'Apostar' : 'Subir';
+
+  if (ui.raiseOpen) {
+    const v = Math.max(minTo, Math.min(ui.raiseTo || minTo, maxTo));
+    ui.raiseTo = v;
+    const potAfterCall = potTotal() + toCall;
+    const half = Math.min(maxTo, Math.max(minTo, S.currentBet + Math.round(potAfterCall / 2)));
+    const full = Math.min(maxTo, Math.max(minTo, S.currentBet + potAfterCall));
+    const step = S.bb;
+    return `<div class="actions"><div class="raise">
+      <div class="who">${raiseLbl} <b>${esc(p.name)}</b> hasta</div>
+      <div class="amount" id="raiseAmt">${v === maxTo ? 'ALL-IN ' : ''}${fmt(v)}</div>
+      <input type="range" id="raiseRange" min="${minTo}" max="${maxTo}" step="1" value="${v}">
+      <div class="step">
+        <button class="btn" data-a="rstep" data-v="${-step}">− ${fmt(step)}</button>
+        <button class="btn" data-a="rstep" data-v="${step}">+ ${fmt(step)}</button>
+      </div>
+      <div class="quick">
+        <button class="btn" data-a="rset" data-v="${minTo}">Mín</button>
+        <button class="btn" data-a="rset" data-v="${half}">½ bote</button>
+        <button class="btn" data-a="rset" data-v="${full}">Bote</button>
+        <button class="btn" data-a="rset" data-v="${maxTo}">All-in</button>
+      </div>
+      <div class="row">
+        <button class="btn ghost" data-a="rcancel">Cancelar</button>
+        <button class="btn primary" data-a="rok">Confirmar</button>
+      </div>
+    </div></div>`;
+  }
+  return `<div class="actions">
+    <div class="who">Turno de <b>${esc(p.name)}</b>${toCall > 0 ? ` · le faltan ${fmt(toCall)}` : ''}</div>
+    <div class="act3">
+      <button class="btn danger" data-a="fold">Retirarse</button>
+      <button class="btn primary" data-a="call">${callLbl}</button>
+      <button class="btn" data-a="raise" ${canRaise ? '' : 'disabled'}>${raiseLbl}</button>
+    </div>
+  </div>`;
+}
+
+function showdownBody() {
+  const name = id => esc(S.players[id].name);
+  let h = '';
+  if (S.runout) h += `<div class="banner">Todos all-in: sacad las cartas que falten y enseñad</div>`;
+  else h += `<div class="banner">Enseñad las cartas</div>`;
+  S.pots.forEach((pot, i) => {
+    const title = S.pots.length === 1 ? 'Bote' : i === 0 ? 'Bote principal' : `Bote secundario ${i}`;
+    if (pot.eligible.length === 1) {
+      h += `<div class="potbox"><div class="head"><span>${title}</span><span class="a">${fmt(pot.amount)}</span></div>
+        <div class="small">Nadie más la igualó: vuelve a ${name(pot.eligible[0])}.</div></div>`;
+      return;
+    }
+    h += `<div class="potbox"><div class="head"><span>${title}</span><span class="a">${fmt(pot.amount)}</span></div>
+      <div class="small">¿Quién gana? Marca a varios si hay empate.</div>
+      <div class="chips">${pot.eligible.map(id =>
+        `<button class="chip ${S.picks[i].includes(id) ? 'on' : ''}" data-a="pick" data-pot="${i}" data-id="${id}">${name(id)}</button>`
+      ).join('')}</div></div>`;
+  });
+  const ready = S.picks.every(p => p.length > 0);
+  h += `<button class="btn primary block" data-a="confirm" ${ready ? '' : 'disabled'}>Repartir</button>`;
+  return h;
+}
+
+function doneBody() {
+  let h = '<h2>Resultado de la mano</h2>';
+  h += S.results.map(r => `<div class="result"><span>${esc(r.name)} se lleva</span><span class="plus">+${fmt(r.amt)}</span></div>`).join('');
+  h += '<h2>Fichas</h2>' + playerList(false);
+  h += `<button class="btn primary block" data-a="next">Siguiente mano</button>`;
+  return h;
+}
+
+function renderOver() {
+  const w = S.players.find(p => p.stack > 0);
+  $app.innerHTML = topBar() + `<div class="screen">
+    <h1>${w ? esc(w.name) + ' se lo lleva todo' : 'Partida terminada'}</h1>
+    <p class="sub">Solo queda un jugador con fichas. Puedes darle fichas a alguien desde ⚙ para seguir, o empezar otra.</p>
+    ${playerList(false)}
+    <button class="btn primary block" data-a="newgame">Nueva partida</button>
+  </div>` + (ui.sheet ? sheet() : '');
+  bind();
+}
+
+// ---------- Configuración inicial ----------
+let setup = { names: ['', '', ''], stack: 1000, sb: 10, bb: 20 };
+
+function renderSetup() {
+  $app.innerHTML = `<div class="screen">
+    <h1>Fichas de póker</h1>
+    <p class="sub">Texas Hold'em con un solo móvil en la mesa. Vosotros ponéis las cartas; esto lleva las fichas, el turno y el bote.</p>
+    <h2>Jugadores, en orden de asiento</h2>
+    <div id="names" style="display:flex;flex-direction:column;gap:8px">
+      ${setup.names.map((n, i) => `<div class="player-row">
+        <input class="input" data-name="${i}" value="${esc(n)}" placeholder="Jugador ${i + 1}" maxlength="16" autocomplete="off">
+        <button class="icon-btn" data-a="rmname" data-i="${i}" aria-label="Quitar">×</button>
+      </div>`).join('')}
+    </div>
+    <button class="btn" data-a="addname" ${setup.names.length >= 10 ? 'disabled' : ''}>+ Añadir jugador</button>
+    <h2>Fichas y ciegas</h2>
+    <div class="field"><label>Fichas iniciales por jugador</label>
+      <input class="input" type="number" inputmode="numeric" id="stack" value="${setup.stack}"></div>
+    <div class="row">
+      <div class="field"><label>Ciega pequeña</label><input class="input" type="number" inputmode="numeric" id="sb" value="${setup.sb}"></div>
+      <div class="field"><label>Ciega grande</label><input class="input" type="number" inputmode="numeric" id="bb" value="${setup.bb}"></div>
+    </div>
+    <p class="err">${esc(ui.setupErr)}</p>
+    <button class="btn primary block" data-a="start">Empezar partida</button>
+    <p class="small">El primer jugador de la lista empieza de dealer. La partida se guarda sola en este móvil.</p>
+  </div>`;
+  $app.querySelectorAll('[data-name]').forEach(el => el.addEventListener('input', e => { setup.names[+el.dataset.name] = e.target.value; }));
+  ['stack', 'sb', 'bb'].forEach(k => document.getElementById(k).addEventListener('input', e => { setup[k] = e.target.value; }));
+  bind();
+}
+
+// Leer del formulario al pulsar: el autorrelleno del móvil no siempre lanza eventos 'input'
+function syncSetup() {
+  $app.querySelectorAll('[data-name]').forEach(el => { setup.names[+el.dataset.name] = el.value; });
+  ['stack', 'sb', 'bb'].forEach(k => { const el = document.getElementById(k); if (el) setup[k] = el.value; });
+}
+
+function tryStart() {
+  syncSetup();
+  const names = setup.names.map(n => n.trim()).filter(Boolean);
+  const stack = parseInt(setup.stack, 10), sb = parseInt(setup.sb, 10), bb = parseInt(setup.bb, 10);
+  let err = '';
+  if (names.length < 2) err = 'Hacen falta al menos 2 jugadores con nombre.';
+  else if (new Set(names.map(n => n.toLowerCase())).size !== names.length) err = 'Hay dos jugadores con el mismo nombre.';
+  else if (!(stack > 0)) err = 'Las fichas iniciales tienen que ser un número mayor que 0.';
+  else if (!(sb > 0) || !(bb > 0)) err = 'Las ciegas tienen que ser mayores que 0.';
+  else if (sb > bb) err = 'La ciega pequeña no puede ser mayor que la grande.';
+  else if (bb >= stack) err = 'La ciega grande tiene que ser menor que las fichas iniciales.';
+  ui.setupErr = err;
+  if (err) return render();
+  newGame(names, stack, sb, bb);
+  save(); render();
+}
+
+// ---------- Ajustes (entre manos) ----------
+function sheet() {
+  const between = S.phase === 'done' || S.phase === 'over';
+  return `<div class="sheet-bg" data-a="closebg"><div class="sheet" data-stop="1">
+    <h1 style="font-size:22px">Ajustes</h1>
+    ${between ? `
+      <h2>Fichas de cada jugador</h2>
+      <p class="small">Para recompras o correcciones. Deja a alguien en 0 para que se quede fuera.</p>
+      ${S.players.map((p, i) => `<div class="player-row">
+        <input class="input" data-ename="${i}" value="${esc(p.name)}" maxlength="16">
+        <input class="input num" type="number" inputmode="numeric" data-estack="${i}" value="${p.stack}">
+      </div>`).join('')}
+      <div class="player-row">
+        <input class="input" id="newName" placeholder="Nuevo jugador (opcional)" maxlength="16">
+        <input class="input num" type="number" inputmode="numeric" id="newStack" placeholder="Fichas">
+      </div>
+      <h2>Ciegas</h2>
+      <div class="row">
+        <div class="field"><label>Pequeña</label><input class="input" type="number" inputmode="numeric" id="esb" value="${S.sb}"></div>
+        <div class="field"><label>Grande</label><input class="input" type="number" inputmode="numeric" id="ebb" value="${S.bb}"></div>
+      </div>
+      <p class="err" id="sheetErr"></p>
+      <button class="btn primary block" data-a="savesheet">Guardar cambios</button>
+    ` : `<p class="sub">Las fichas, los jugadores y las ciegas se cambian entre manos, cuando termine esta. Si alguien se ha equivocado, usa ↶ para deshacer.</p>`}
+    <button class="btn block" data-a="closesheet">Cerrar</button>
+    <button class="btn ghost block" data-a="reset" style="color:#ffb4ae">Terminar partida y empezar otra</button>
+  </div></div>`;
+}
+
+function saveSheet() {
+  const errEl = document.getElementById('sheetErr');
+  const sb = parseInt(document.getElementById('esb').value, 10);
+  const bb = parseInt(document.getElementById('ebb').value, 10);
+  if (!(sb > 0) || !(bb > 0) || sb > bb) { errEl.textContent = 'Revisa las ciegas: mayores que 0 y la pequeña no mayor que la grande.'; return; }
+  const edits = S.players.map((p, i) => ({
+    name: document.querySelector(`[data-ename="${i}"]`).value.trim() || p.name,
+    stack: parseInt(document.querySelector(`[data-estack="${i}"]`).value, 10),
+  }));
+  if (edits.some(e => !(e.stack >= 0))) { errEl.textContent = 'Las fichas no pueden estar vacías ni ser negativas.'; return; }
+  const newName = document.getElementById('newName').value.trim();
+  const newStack = parseInt(document.getElementById('newStack').value, 10);
+  if (newName && !(newStack > 0)) { errEl.textContent = 'Pon cuántas fichas tiene el jugador nuevo.'; return; }
+  if (newName && S.players.length >= 10) { errEl.textContent = 'Máximo 10 jugadores.'; return; }
+  snapshot();
+  S.players.forEach((p, i) => { p.name = edits[i].name; p.stack = edits[i].stack; p.out = p.stack <= 0; });
+  if (newName) S.players.push({ id: S.players.length, name: newName, stack: newStack, bet: 0, total: 0, folded: false, allIn: false, out: false, acted: false });
+  S.sb = sb; S.bb = bb;
+  if (S.phase === 'over' && S.players.filter(p => p.stack > 0).length >= 2) S.phase = 'done';
+  ui.sheet = false;
+  save(); render();
+}
+
+// ---------- Eventos ----------
+function bind() {
+  $app.querySelectorAll('[data-a]').forEach(el => el.addEventListener('click', onClick));
+  const sh = $app.querySelector('[data-stop]');
+  if (sh) sh.addEventListener('click', e => e.stopPropagation());
+  const range = document.getElementById('raiseRange');
+  if (range) range.addEventListener('input', e => {
+    ui.raiseTo = +e.target.value;
+    const p = S.players[S.turn];
+    document.getElementById('raiseAmt').textContent = (ui.raiseTo === p.bet + p.stack ? 'ALL-IN ' : '') + fmt(ui.raiseTo);
+  });
+}
+
+function onClick(e) {
+  const el = e.currentTarget; const a = el.dataset.a;
+  if (el.disabled) return;
+  switch (a) {
+    case 'addname': syncSetup(); setup.names.push(''); render(); break;
+    case 'rmname': if (setup.names.length > 2) { syncSetup(); setup.names.splice(+el.dataset.i, 1); render(); } break;
+    case 'start': tryStart(); break;
+    case 'undo': undo(); break;
+    case 'menu': ui.sheet = true; render(); break;
+    case 'closesheet': ui.sheet = false; render(); break;
+    case 'closebg': if (e.target === el) { ui.sheet = false; render(); } break;
+    case 'savesheet': saveSheet(); break;
+    case 'reset':
+    case 'newgame':
+      if (a === 'reset' && !confirm('¿Terminar esta partida? Se pierden las fichas actuales.')) return;
+      setup.names = S.players.map(p => p.name); setup.stack = S.initStack || 1000; setup.sb = S.sb; setup.bb = S.bb;
+      S = null; H = []; ui.sheet = false; save(); render(); break;
+    case 'fold': act('fold'); break;
+    case 'call': act('call'); break;
+    case 'raise': ui.raiseOpen = true; ui.raiseTo = 0; render(); break;
+    case 'rcancel': ui.raiseOpen = false; render(); break;
+    case 'rset': ui.raiseTo = +el.dataset.v; render(); break;
+    case 'rstep': ui.raiseTo = (ui.raiseTo || 0) + (+el.dataset.v); render(); break;
+    case 'rok': act('raise', ui.raiseTo); break;
+    case 'pick': togglePick(+el.dataset.pot, +el.dataset.id); break;
+    case 'confirm': confirmShowdown(); break;
+    case 'next': nextHand(); break;
+  }
+}
+
+// Pantalla siempre encendida mientras la app está abierta (donde el navegador lo permita)
+let wakeLock = null;
+async function keepAwake() {
+  try { if ('wakeLock' in navigator && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+document.addEventListener('visibilitychange', keepAwake);
+document.addEventListener('click', () => { if (!wakeLock) keepAwake(); }, { once: true });
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+load();
+render();
+</script>
+</body>
+</html>
